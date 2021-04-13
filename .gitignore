@@ -1,5 +1,6 @@
 !.gitignore
 *.dll
+*.lib
 *.exe
 *.o
 out.bmp

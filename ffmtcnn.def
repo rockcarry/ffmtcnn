@@ -1,0 +1,6 @@
+LIBRARY ffmtcnn
+
+EXPORTS
+    mtcnn_init
+    mtcnn_free
+    mtcnn_detect
