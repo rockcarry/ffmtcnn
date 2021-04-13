@@ -1,0 +1,6 @@
+!.gitignore
+*.dll
+*.exe
+*.o
+out.bmp
+
