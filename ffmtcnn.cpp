@@ -6,12 +6,13 @@
 #include "ffmtcnn.h"
 
 typedef struct {
+    int mindetsize;
     ncnn::Mat image;
     ncnn::Net pnet, rnet, onet;
 } MTCNN;
 
-const static float SCORE_THRESHOLD[3] = { 0.8f, 0.8f, 0.6f };
-const static float NMS_THRESHOLD  [3] = { 0.5f, 0.7f, 0.7f };
+static const float SCORE_THRESHOLD[3] = { 0.8f, 0.8f, 0.6f };
+static const float NMS_THRESHOLD  [3] = { 0.5f, 0.7f, 0.7f };
 
 static void load_models(MTCNN *mtcnn, char *path)
 {
@@ -31,7 +32,7 @@ static void free_models(MTCNN *mtcnn)
     mtcnn->onet.clear();
 }
 
-static bool cmp_score(BBOX a, BBOX b) { return a.score < b.score; }
+static bool cmp_score(BBOX a, BBOX b) { return a.score > b.score; }
 
 static void nms(std::vector<BBOX> &dstlist, std::vector<BBOX> &srclist, const float threshold, int min)
 {
@@ -59,8 +60,8 @@ static void nms(std::vector<BBOX> &dstlist, std::vector<BBOX> &srclist, const fl
             int s2  = (x22 - x21) * (y22 - y21);
             int ss  = s1 + s2 - sc;
             float iou;
-            if (min) iou = sc / (s1 < s2 ? s1 : s2);
-            else     iou = sc / ss;
+            if (min) iou = (float)sc / (s1 < s2 ? s1 : s2);
+            else     iou = (float)sc / ss;
             if (iou > threshold)  srclist[i].score = 0;
             else if (head == -1) head = i;
         }
@@ -73,15 +74,15 @@ static void refine(std::vector<BBOX> &bboxlist, int width, int height, bool squa
     if (bboxlist.empty()) return;
     float maxside = 0;
     for (auto &it : bboxlist) {
-        float bbw = it.x2 - it.x1 + 1;
-        float bbh = it.y2 - it.y1 + 1;
+        int   bbw = it.x2 - it.x1 + 1;
+        int   bbh = it.y2 - it.y1 + 1;
         float x1 = it.x1 + it.regre_coord[0] * bbw;
         float y1 = it.y1 + it.regre_coord[1] * bbh;
         float x2 = it.x2 + it.regre_coord[2] * bbw;
         float y2 = it.y2 + it.regre_coord[3] * bbh;
         if (square) {
-            int w = x2 - x1 + 1;
-            int h = y2 - y1 + 1;
+            float w = x2 - x1 + 1;
+            float h = y2 - y1 + 1;
             maxside = (h > w) ? h : w;
             x1 += (w - maxside) * 0.5f;
             y1 += (h - maxside) * 0.5f;
@@ -101,9 +102,9 @@ static void run_pnet(MTCNN *mtcnn, std::vector<BBOX> &pnet_bbox_list)
 {
     const int   MTCNN_CELL_SIZE = 12;
     const float SCALE_FACTOR    = 0.709f;
-    const int   MIN_DET_SIZE    = 32;
-    float curfactor = (float)MTCNN_CELL_SIZE / MIN_DET_SIZE;
+    float curfactor = (float)MTCNN_CELL_SIZE / mtcnn->mindetsize;
     float cursize   = (mtcnn->image.w < mtcnn->image.h ? mtcnn->image.w : mtcnn->image.h) * curfactor;
+    BBOX  bbox      = {0};
 
     pnet_bbox_list.clear();
     while (cursize > MTCNN_CELL_SIZE) {
@@ -123,7 +124,6 @@ static void run_pnet(MTCNN *mtcnn, std::vector<BBOX> &pnet_bbox_list)
         for (int row = 0; row < score.h; row++) {
             for (int col = 0; col < score.w; col++) {
                 if (*p > SCORE_THRESHOLD[0]) {
-                    BBOX  bbox = {0};
                     bbox.score = *p;
                     bbox.x1    = lround((2 * col + 1) / curfactor);
                     bbox.y1    = lround((2 * row + 1) / curfactor);
@@ -157,9 +157,7 @@ static void run_rnet(MTCNN *mtcnn, std::vector<BBOX> &rnet_bbox_list, std::vecto
         ex.extract("prob1"  , score);
         ex.extract("conv5-2", bbox );
         if ((float)score[1] > SCORE_THRESHOLD[1]) {
-            for (int channel = 0; channel < 4; channel++) {
-                it.regre_coord[channel] = (float)bbox[channel];
-            }
+            for (int i = 0; i < 4; i++) it.regre_coord[i] = (float)bbox[i];
             it.score = score.channel(1)[0];
             rnet_bbox_list.push_back(it);
         }
@@ -182,23 +180,24 @@ static void run_onet(MTCNN *mtcnn, std::vector<BBOX> &onet_bbox_list, std::vecto
         ex.extract("conv6-2", bbox    );
         ex.extract("conv6-3", keypoint);
         if ((float)score[1] > SCORE_THRESHOLD[2]) {
-            for (int channel = 0; channel < 4; channel++) {
-                it.regre_coord[channel] = (float)bbox[channel];
-            }
+            for (int i = 0; i < 4; i++) it.regre_coord[i] = (float)bbox[i];
             it.score = score.channel(1)[0];
-            for (int num = 0; num < 5; num++) {
-                (it.pointx)[num] = it.x1 + (it.x2 - it.x1) * keypoint[num + 0];
-                (it.pointx)[num] = it.y1 + (it.y2 - it.y1) * keypoint[num + 5];
+            for (int i = 0; i < 5; i++) {
+                (it.pointx)[i] = it.x1 + (it.x2 - it.x1) * keypoint[i + 0];
+                (it.pointx)[i] = it.y1 + (it.y2 - it.y1) * keypoint[i + 5];
             }
             onet_bbox_list.push_back(it);
         }
     }
 }
 
-void* mtcnn_init(char *path)
+void* mtcnn_init(char *path, int mindetsize)
 {
     MTCNN *mtcnn = new MTCNN();
-    if (mtcnn) load_models(mtcnn, path);
+    if (mtcnn) {
+        mtcnn->mindetsize = mindetsize ? mindetsize : 32;
+        load_models(mtcnn, path);
+    }
     return mtcnn;
 }
 
@@ -243,14 +242,14 @@ int mtcnn_detect(MTCNN *mtcnn, BBOX *bboxlist, int listsize, uint8_t *bitmap, in
 #ifdef _TEST_
 int main(void)
 {
-    void *mtcnn = mtcnn_init((char*)"models");
+    void *mtcnn = mtcnn_init((char*)"models", 0);
     BMP   mybmp = {};
-    BBOX  bboxes[10];
+    BBOX  bboxes[100];
     int   n, i;
     bmp_load(&mybmp, (char*)"test.bmp");
-    n = mtcnn_detect((MTCNN*)mtcnn, bboxes, 10, (uint8_t*)mybmp.pdata, mybmp.width, mybmp.height);
+    n = mtcnn_detect((MTCNN*)mtcnn, bboxes, 100, (uint8_t*)mybmp.pdata, mybmp.width, mybmp.height);
     for (i = 0; i < n; i++) {
-        printf("%d %d %d %d\n", bboxes[i].x1, bboxes[i].y1, bboxes[i].x2, bboxes[i].y2);
+        printf("%3d %3d %3d %3d\n", bboxes[i].x1, bboxes[i].y1, bboxes[i].x2, bboxes[i].y2);
         bmp_rectangle(&mybmp, bboxes[i].x1, bboxes[i].y1, bboxes[i].x2, bboxes[i].y2, 0, 255, 0);
     }
     bmp_save(&mybmp, (char*)"out.bmp");

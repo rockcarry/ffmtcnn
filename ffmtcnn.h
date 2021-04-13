@@ -13,7 +13,7 @@ typedef struct {
     int x1, y1, x2, y2;
 } BBOX;
 
-void* mtcnn_init  (char *path);
+void* mtcnn_init  (char *path, int mindetsize);
 void  mtcnn_free  (void *ctxt);
 int   mtcnn_detect(void *mtcnn, BBOX *bboxlist, int n, uint8_t *bitmap, int w, int h);
 
