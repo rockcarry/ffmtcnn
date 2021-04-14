@@ -3,6 +3,8 @@
 *.lib
 *.exe
 *.o
+*.so
 out.bmp
 /ncnn/
+/src/test
 
