@@ -24,14 +24,14 @@
 #define NCNN_BENCHMARK 0
 #define NCNN_PLATFORM_API 1
 #define NCNN_PIXEL 1
-#define NCNN_PIXEL_ROTATE 1
-#define NCNN_PIXEL_AFFINE 1
+#define NCNN_PIXEL_ROTATE 0
+#define NCNN_PIXEL_AFFINE 0
 #define NCNN_VULKAN 0
 #define NCNN_RUNTIME_CPU 1
 #define NCNN_AVX2 1
 #define NCNN_ARM82 0
 
-#define NCNN_VERSION_STRING "1.0.20210409"
+#define NCNN_VERSION_STRING "1.0.20210414"
 
 #include "ncnn_export.h"
 
