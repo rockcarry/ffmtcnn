@@ -15,7 +15,7 @@ typedef struct {
 
 void* mtcnn_init  (char *path, int mindetsize);
 void  mtcnn_free  (void *ctxt);
-int   mtcnn_detect(void *mtcnn, BBOX *bboxlist, int n, uint8_t *bitmap, int w, int h);
+int   mtcnn_detect(void *ctxt, BBOX *bboxlist, int n, uint8_t *bitmap, int w, int h);
 
 #ifdef __cplusplus
 }
