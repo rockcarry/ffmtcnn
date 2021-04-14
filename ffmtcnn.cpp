@@ -11,8 +11,8 @@ typedef struct {
     ncnn::Net pnet, rnet, onet;
 } MTCNN;
 
-static const float SCORE_THRESHOLD[3] = { 0.8f, 0.8f, 0.6f };
-static const float NMS_THRESHOLD  [3] = { 0.5f, 0.7f, 0.7f };
+static const float SCORE_THRESHOLD[3] = { 0.8f, 0.8f, 0.8f };
+static const float NMS_THRESHOLD  [3] = { 0.5f, 0.6f, 0.7f };
 
 static void load_models(MTCNN *mtcnn, char *path)
 {
@@ -240,18 +240,39 @@ int mtcnn_detect(MTCNN *mtcnn, BBOX *bboxlist, int listsize, uint8_t *bitmap, in
 }
 
 #ifdef _TEST_
+#ifdef WIN32
+#define get_tick_count GetTickCount
+#else
+#include <time.h>
+static uint32_t get_tick_count()
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+}
+#endif
+
 int main(void)
 {
-    void *mtcnn = mtcnn_init((char*)"models", 0);
+    void *mtcnn = mtcnn_init((char*)"models", 32);
     BMP   mybmp = {};
     BBOX  bboxes[100];
-    int   n, i;
+    uint32_t tick;
+    int      n, i;
+
     bmp_load(&mybmp, (char*)"test.bmp");
-    n = mtcnn_detect((MTCNN*)mtcnn, bboxes, 100, (uint8_t*)mybmp.pdata, mybmp.width, mybmp.height);
+
+    tick = get_tick_count();
+    for (i = 0; i < 100; i++) {
+        n = mtcnn_detect((MTCNN*)mtcnn, bboxes, 100, (uint8_t*)mybmp.pdata, mybmp.width, mybmp.height);
+    }
+    printf("time: %d\n", (int)get_tick_count() - (int)tick);
+
     for (i = 0; i < n; i++) {
         printf("%3d %3d %3d %3d\n", bboxes[i].x1, bboxes[i].y1, bboxes[i].x2, bboxes[i].y2);
         bmp_rectangle(&mybmp, bboxes[i].x1, bboxes[i].y1, bboxes[i].x2, bboxes[i].y2, 0, 255, 0);
     }
+
     bmp_save(&mybmp, (char*)"out.bmp");
     bmp_free(&mybmp);
     mtcnn_free(mtcnn);
