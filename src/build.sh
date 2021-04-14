@@ -1,7 +1,7 @@
 #!/bin/sh
 
-CXX_FLAGS="-I$PWD/libncnn/include -ffunction-sections"
-LD_FLAGS="-L$PWD/libncnn/lib -lncnn -fopenmp -Wl,-gc-sections -Wl,-strip-all"
+CXX_FLAGS="-I$PWD/../libncnn/include -ffunction-sections"
+LD_FLAGS="-L$PWD/../libncnn/lib -lncnn -fopenmp -Wl,-gc-sections -Wl,-strip-all"
 
 case "$1" in
 "")

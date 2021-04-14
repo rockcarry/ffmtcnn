@@ -201,14 +201,17 @@ void* mtcnn_init(char *path, int mindetsize)
     return mtcnn;
 }
 
-void mtcnn_free(void *context)
+void mtcnn_free(void *ctxt)
 {
-    MTCNN *mtcnn = (MTCNN*)context;
-    free_models(mtcnn);
+    MTCNN *mtcnn = (MTCNN*)ctxt;
+    if (mtcnn) free_models(mtcnn);
 }
 
-int mtcnn_detect(MTCNN *mtcnn, BBOX *bboxlist, int listsize, uint8_t *bitmap, int w, int h)
+int mtcnn_detect(void *ctxt, BBOX *bboxlist, int listsize, uint8_t *bitmap, int w, int h)
 {
+    if (!ctxt || !bitmap) return 0;
+    MTCNN *mtcnn = (MTCNN*)ctxt;
+
     const static float MEAN_VALS[3] = { 127.5, 127.5, 127.5 };
     const static float NORM_VALS[3] = { 0.0078125, 0.0078125, 0.0078125 };
     mtcnn->image = ncnn::Mat::from_pixels(bitmap, ncnn::Mat::PIXEL_RGB, w, h);
@@ -235,7 +238,9 @@ int mtcnn_detect(MTCNN *mtcnn, BBOX *bboxlist, int listsize, uint8_t *bitmap, in
     mtcnn->image.release();
 
     int n = (int)onet_bbox_list.size() < listsize ? (int)onet_bbox_list.size() : listsize;
-    for (int i = 0; i < n; i++) bboxlist[i] = onet_bbox_list[i];
+    if (bboxlist) {
+        for (int i = 0; i < n; i++) bboxlist[i] = onet_bbox_list[i];
+    }
     return n;
 }
 
@@ -252,28 +257,49 @@ static uint32_t get_tick_count()
 }
 #endif
 
-int main(void)
+int main(int argc, char *argv[])
 {
-    void *mtcnn = mtcnn_init((char*)"models", 32);
-    BMP   mybmp = {};
+    char *bfile = (char*)"test.bmp";
+    char *mpath = (char*)"models";
+    char *dsize = (char*)"32";
+    void *mtcnn = NULL;
+    BMP   mybmp = {0};
     BBOX  bboxes[100];
     uint32_t tick;
     int      n, i;
 
-    bmp_load(&mybmp, (char*)"test.bmp");
+    if (argc >= 2) bfile = argv[1];
+    if (argc >= 3) mpath = argv[2];
+    if (argc >= 4) dsize = argv[3];
+    printf("bmpfile    : %s\n", bfile      );
+    printf("models path: %s\n", mpath      );
+    printf("detect size: %d\n", atoi(dsize));
+    printf("\n");
 
+    mtcnn = mtcnn_init(mpath, atoi(dsize));
+    if (0 != bmp_load(&mybmp, bfile)) {
+        printf("failed to load bmpfile %s !\n", bfile);
+        goto done;
+    }
+
+    printf("do face detection 100 times ...\n");
     tick = get_tick_count();
     for (i = 0; i < 100; i++) {
-        n = mtcnn_detect((MTCNN*)mtcnn, bboxes, 100, (uint8_t*)mybmp.pdata, mybmp.width, mybmp.height);
+        n = mtcnn_detect(mtcnn, bboxes, 100, (uint8_t*)mybmp.pdata, mybmp.width, mybmp.height);
     }
-    printf("time: %d\n", (int)get_tick_count() - (int)tick);
+    printf("finish !\n");
+    printf("totoal used time: %d ms\n\n", (int)get_tick_count() - (int)tick);
 
+    printf("face rect list:\n");
     for (i = 0; i < n; i++) {
         printf("%3d %3d %3d %3d\n", bboxes[i].x1, bboxes[i].y1, bboxes[i].x2, bboxes[i].y2);
         bmp_rectangle(&mybmp, bboxes[i].x1, bboxes[i].y1, bboxes[i].x2, bboxes[i].y2, 0, 255, 0);
     }
+    printf("\n");
 
+    printf("save result to out.bmp");
     bmp_save(&mybmp, (char*)"out.bmp");
+done:
     bmp_free(&mybmp);
     mtcnn_free(mtcnn);
     return 0;
