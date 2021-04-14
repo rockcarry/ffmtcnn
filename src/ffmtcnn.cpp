@@ -297,7 +297,7 @@ int main(int argc, char *argv[])
     }
     printf("\n");
 
-    printf("save result to out.bmp");
+    printf("save result to out.bmp\n");
     bmp_save(&mybmp, (char*)"out.bmp");
 done:
     bmp_free(&mybmp);
