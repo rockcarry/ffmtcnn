@@ -16,7 +16,7 @@ static const float NMS_THRESHOLD  [3] = { 0.5f, 0.6f, 0.7f };
 
 static void load_models(MTCNN *mtcnn, char *path)
 {
-    char file[MAX_PATH];
+    char file[256];
     snprintf(file, sizeof(file), "%s/pnet.param", path); mtcnn->pnet.load_param(file);
     snprintf(file, sizeof(file), "%s/pnet.bin"  , path); mtcnn->pnet.load_model(file);
     snprintf(file, sizeof(file), "%s/rnet.param", path); mtcnn->rnet.load_param(file);
