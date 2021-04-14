@@ -6,5 +6,6 @@
 *.so
 out.bmp
 /ncnn/
+/libncnn/
 /src/test
 
