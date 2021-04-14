@@ -158,7 +158,7 @@ static void run_rnet(MTCNN *mtcnn, std::vector<BBOX> &rnet_bbox_list, std::vecto
         ex.extract("conv5-2", bbox );
         if ((float)score[1] > SCORE_THRESHOLD[1]) {
             for (int i = 0; i < 4; i++) it.regre_coord[i] = (float)bbox[i];
-            it.score = score.channel(1)[0];
+            it.score = (float)score[1];
             rnet_bbox_list.push_back(it);
         }
     }
@@ -181,7 +181,7 @@ static void run_onet(MTCNN *mtcnn, std::vector<BBOX> &onet_bbox_list, std::vecto
         ex.extract("conv6-3", keypoint);
         if ((float)score[1] > SCORE_THRESHOLD[2]) {
             for (int i = 0; i < 4; i++) it.regre_coord[i] = (float)bbox[i];
-            it.score = score.channel(1)[0];
+            it.score = (float)score[1];
             for (int i = 0; i < 5; i++) {
                 (it.pointx)[i] = it.x1 + (it.x2 - it.x1) * keypoint[i + 0];
                 (it.pointx)[i] = it.y1 + (it.y2 - it.y1) * keypoint[i + 5];
@@ -237,11 +237,11 @@ int mtcnn_detect(void *ctxt, BBOX *bboxlist, int listsize, uint8_t *bitmap, int 
     nms(onet_bbox_list, temp_bbox_list, NMS_THRESHOLD[2], 1);
     mtcnn->image.release();
 
-    int n = (int)onet_bbox_list.size() < listsize ? (int)onet_bbox_list.size() : listsize;
+    int i = 0;
     if (bboxlist) {
-        for (int i = 0; i < n; i++) bboxlist[i] = onet_bbox_list[i];
+        for (i = 0; i < (int)onet_bbox_list.size() && i < listsize; i++) bboxlist[i] = onet_bbox_list[i];
     }
-    return n;
+    return i;
 }
 
 #ifdef _TEST_
@@ -292,7 +292,7 @@ int main(int argc, char *argv[])
 
     printf("face rect list:\n");
     for (i = 0; i < n; i++) {
-        printf("%3d %3d %3d %3d\n", bboxes[i].x1, bboxes[i].y1, bboxes[i].x2, bboxes[i].y2);
+        printf("score: %.2f, rect: (%3d %3d %3d %3d)\n", bboxes[i].score, bboxes[i].x1, bboxes[i].y1, bboxes[i].x2, bboxes[i].y2);
         bmp_rectangle(&mybmp, bboxes[i].x1, bboxes[i].y1, bboxes[i].x2, bboxes[i].y2, 0, 255, 0);
     }
     printf("\n");
