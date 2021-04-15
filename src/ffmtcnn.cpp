@@ -204,7 +204,10 @@ void* mtcnn_init(char *path, int mindetsize)
 void mtcnn_free(void *ctxt)
 {
     MTCNN *mtcnn = (MTCNN*)ctxt;
-    if (mtcnn) free_models(mtcnn);
+    if (mtcnn) {
+        free_models(mtcnn);
+        delete mtcnn;
+    }
 }
 
 int mtcnn_detect(void *ctxt, BBOX *bboxlist, int listsize, uint8_t *bitmap, int w, int h)
