@@ -15,11 +15,11 @@ case "$1" in
         $STRIP *.exe *.dll
         ;;
     ubuntu)
-        $CXX --shared ffmtcnn.cpp $CXX_FLAGS $LD_FLAGS -o ffmtcnn.so
+        $CXX --shared ffmtcnn.cpp $CXX_FLAGS $LD_FLAGS -o libffmtcnn.so
         $STRIP test *.so
         ;;
     msc33x)
-        $CXX --shared ffmtcnn.cpp $CXX_FLAGS $LD_FLAGS -o ffmtcnn.so
+        $CXX --shared ffmtcnn.cpp $CXX_FLAGS $LD_FLAGS -o libffmtcnn.so
         $STRIP test *.so
         ;;
     esac
